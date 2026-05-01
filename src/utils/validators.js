@@ -1,3 +1,5 @@
+import { z } from 'zod'
+
 export const validateEmail = (email) => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(email);
@@ -24,3 +26,59 @@ export const validatePhone = (phone) => {
 export const validateRequired = (value) => {
   return value !== null && value !== undefined && value.toString().trim() !== '';
 };
+
+export const calculatePasswordStrength = (password) => {
+  let strength = 0;
+  const checks = {
+    length: password.length >= 8,
+    uppercase: /[A-Z]/.test(password),
+    lowercase: /[a-z]/.test(password),
+    number: /\d/.test(password),
+    special: /[@$!%*?&]/.test(password),
+  };
+
+  Object.values(checks).forEach((check) => {
+    if (check) strength++;
+  });
+
+  const percentage = (strength / 5) * 100;
+  let level = 'Weak';
+  let color = 'red';
+
+  if (strength >= 4) {
+    level = 'Strong';
+    color = 'green';
+  } else if (strength >= 3) {
+    level = 'Good';
+    color = 'yellow';
+  }
+
+  return { level, color, percentage, checks };
+};
+
+// Zod schemas
+export const signupSchema = z.object({
+  fullName: z.string().min(2, 'Full name must be at least 2 characters'),
+  email: z.string().email('Invalid email address'),
+  phoneNumber: z.string().regex(/^\+?92\d{10}$/, 'Invalid Pakistani phone number'),
+  password: z.string()
+    .min(8, 'Password must be at least 8 characters')
+    .regex(/[A-Z]/, 'Password must contain an uppercase letter')
+    .regex(/[a-z]/, 'Password must contain a lowercase letter')
+    .regex(/\d/, 'Password must contain a number'),
+  confirmPassword: z.string(),
+  role: z.enum(['buyer', 'seller']),
+  termsAccepted: z.boolean().refine((val) => val === true, {
+    message: 'You must accept the terms and conditions',
+  }),
+  profilePicture: z.any().optional(),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: 'Passwords do not match',
+  path: ['confirmPassword'],
+});
+
+export const loginSchema = z.object({
+  email: z.string().email('Invalid email address'),
+  password: z.string().min(1, 'Password is required'),
+  rememberMe: z.boolean().optional(),
+});
